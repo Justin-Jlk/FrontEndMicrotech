@@ -1,152 +1,138 @@
-import "./App.css";
-import { Table, Tag } from "antd";
 import React, { useState, useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate, Link } from "react-router-dom";
+import Observation from "../src/components/Observation";
+import StatusChecker from "../src/components/StatusChecker";
+import ProcessTimeTracker from "../src/components/ProcessTimeTracker";
+import Login from "./Login/login";
+import Logout from "./Login/logout";
+import { Avatar, Layout, Menu, Spin, Typography } from "antd";
+import image from "./components/assets/download.jpg"
+import { HomeOutlined, SearchOutlined, SettingOutlined, LogoutOutlined } from "@ant-design/icons";
+
+const { Sider, Content } = Layout;
+const { Text } = Typography;
 
 function App() {
-  const [getAllStatus, setGetAllStatus] = useState([]);
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    localStorage.getItem("isAuthenticated") === "true"
+  );
+  const [loading, setLoading] = useState(true);
+
+  const userName = localStorage.getItem("name");
+  const userRole = localStorage.getItem("role");
 
   useEffect(() => {
-    
-    fetch("https://microtechbackend.onrender.com/all-stages/")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Network response was not ok ' + response.statusText);
+    const validateToken = async () => {
+      setLoading(true);
+      try {
+        if (localStorage.getItem("isAuthenticated") === "true") {
+          setIsAuthenticated(true);
         }
-        return response.json();
-      })
-      .then((data) => {
-        const allData = {};
-
-        
-        data.stages.forEach(stage => {
-          const serial = stage.serial_number;
-
-          if (!allData[serial]) {
-            allData[serial] = {
-              serial_number: serial,
-              part_name: 'nexus_top',
-            };
-          }
-
-        
-          allData[serial][`${stage.process.replace(/\s+/g, '_').toLowerCase()}_completed`] = stage.completed;
-          allData[serial][`${stage.process.replace(/\s+/g, '_').toLowerCase()}_time`] = stage.completed_time;
-        });
-
-        const updatedData = Object.values(allData);
-        setGetAllStatus(updatedData);
-      })
-      .catch((err) => {
-        console.log(err.message);
-      });
+      } catch (err) {
+        setIsAuthenticated(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+    validateToken();
   }, []);
 
-  const processes = [
-    "Receiving Inspection",
-    "M6 Clinch Stud Assy in Sheet",
-    "Earth Stud Assembly",
-    "Corner Bracket Assembly",
-    "Module Rail Assembly LH Riveting",
-    "Module Rail Assembly RH Riveting",
-    "Baffler Assembly",
-    "Omega Bracket Assembly",
-    "Bottom Plate M8 Clinch Stud Assy",
-    "Washer Assembly in M8 Clinch",
-    "Stud in Bottom Sheet",
-    "Bottom Plate Riveting",
-    "M4 & M6 Clinch Nut Assembly",
-    "Washer Assembly in M6 Clinch Stud in Frame",
-    "DYE PENETRATION",
-    "CMM Inspection",
-    "PDI Inspection",
-    "Leak Testing",
-    "Washing (Cleaning of Frame)",
-    "Millipore Testing",
-    "Final Inspection",
-    "Packing & Dispatch",
-  ];
+  const handleLogin = (userData) => {
+    setIsAuthenticated(true);
+    
 
-  const columns = [
-    {
-      title: "Serial Number",
-      dataIndex: "serial_number",
-      key: "serial_number",
-      fixed: 'left',
-      align: 'center',
-      width: 150,
-      render: (text) => <div style={{ padding: '10px' }}>{text}</div>,
-    },
-    {
-      title: "Part Name",
-      dataIndex: "part_name",
-      key: "part_name",
-      fixed: 'left',
-      align: 'center',
-      width: 200,
-      render: (text) => <div style={{ padding: '10px' }}>{text}</div>,
-    },
-    ...processes.map((process) => ({
-      title: process,
-      key: process.replace(/\s+/g, '_').toLowerCase(),
-      align: 'center',
-      width: 200,
-      render: (text, record) => {
-        const processTimeField = `${process.replace(/\s+/g, '_').toLowerCase()}_time`;
-        return (
-          <>
-            {record[`${process.replace(/\s+/g, '_').toLowerCase()}_completed`] ? (
-              <>
-                <Tag color="green">Completed</Tag>
-                <div>{new Date(record[processTimeField]).toLocaleString()}</div>
-              </>
-            ) : (
-              <Tag color="volcano">Pending</Tag>
-            )}
-          </>
-        );
-      },
-    })),
-    {
-      title: "Tags",
-      key: "tags",
-      dataIndex: "tags",
-      align: 'center',
-      fixed: 'right',
-      width: 150,
-      render: (_, record) => {
-        const tags = processes.reduce((acc, process) => {
-          if (record[`${process.replace(/\s+/g, '_').toLowerCase()}_completed`]) {
-            acc.push(`${process} Completed`);
-          }
-          return acc;
-        }, []);
-        
-        return (
-          <>
-            {tags.length > 0 ? (
-              tags.map((tag, index) => (
-                <Tag color="green" key={index}>
-                  {tag}
-                </Tag>
-              ))
-            ) : (
-              <Tag color="volcano">Pending</Tag>
-            )}
-          </>
-        );
-      },
-    },
-  ];
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem("isAuthenticated");
+    localStorage.removeItem("user");
+    localStorage.removeItem("role");
+  };
+
+  if (loading) {
+    return (
+      <div style={{ textAlign: "center", marginTop: "50px" }}>
+        <Spin size="large" tip="Loading..." />
+      </div>
+    );
+  }
 
   return (
-    <Table
-      dataSource={getAllStatus}
-      columns={columns}
-      rowKey="serial_number"
-      scroll={{ x: 'max-content' }}
-      sticky
-      style={{ padding: '10px' }}
-    />
+    <Router>
+      <Layout style={{ minHeight: "100vh" }}>
+        {isAuthenticated && (
+          <Sider
+            width={250}
+            theme="dark"
+            style={{
+              position: "sticky",
+              top: 0,
+              height: "100vh",
+              zIndex: 1,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <img src={image} alt="MicroTech Logo" style={{ width: "50px", height: "50px",paddingLeft:"5%" }} />
+              <div className="logo" style={{ color: "white", padding: "16px", fontSize: "24px", marginLeft: "16px" }}>
+                MicroTech<br/>
+                <Text strong style={{ color: "white" }}>{userName?.name || "Narendra"}</Text>
+                <br/>
+                <Text style={{ color: "white" }}>{userRole?.role || "Admin"}</Text>
+              </div>
+             
+            </div>
+
+            <Menu theme="dark" mode="inline">
+              <Menu.Item key="1" icon={<HomeOutlined />}>
+                <Link to="/observation">Current Operation</Link>
+              </Menu.Item>
+              <Menu.Item key="2" icon={<SearchOutlined />}>
+                <Link to="/status-checker">overall work Process(WIP)</Link>
+              </Menu.Item>
+              <Menu.Item key="3" icon={<SettingOutlined />}>
+                <Link to="/process-timetracker">Ageing</Link>
+              </Menu.Item>
+              <Menu.Item key="4" icon={<LogoutOutlined />}>
+                <Link to="/logout">Logout</Link>
+              </Menu.Item>
+            </Menu>
+          </Sider>
+        )}
+        <Layout>
+          <Content style={{ margin: "16px" }}>
+            <div style={{ padding: 24, minHeight: 360, background: "#fff" }}>
+              <Routes>
+                <Route
+                  path="/login"
+                  element={<Login setIsAuthenticated={handleLogin} />}
+                />
+                <Route
+                  path="/observation"
+                  element={isAuthenticated ? <Observation /> : <Navigate to="/login" />}
+                />
+                <Route
+                  path="/status-checker"
+                  element={isAuthenticated ? <StatusChecker /> : <Navigate to="/login" />}
+                />
+                <Route
+                  path="/process-timetracker"
+                  element={isAuthenticated ? <ProcessTimeTracker /> : <Navigate to="/login" />}
+                />
+                <Route
+                  path="/logout"
+                  element={<Logout setIsAuthenticated={handleLogout} />}
+                />
+                <Route
+                  path="/"
+                  element={isAuthenticated ? <Navigate to="/observation" /> : <Navigate to="/login" />}
+                />
+              </Routes>
+            </div>
+          </Content>
+        </Layout>
+      </Layout>
+    </Router>
   );
 }
 
