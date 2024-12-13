@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Tag, Spin } from 'antd';
+import { Table, Tag, Spin, Collapse, Modal } from 'antd';
+import { QRCodeCanvas } from 'qrcode.react';
 import moment from 'moment';
+const { Panel } = Collapse;
 
 const Observation = () => {
   const [stagesData, setStagesData] = useState({ Lower: [], Upper: [], Assemble: [] });
   const [processData, setProcessData] = useState({ LowerProcesses: [], UpperProcesses: [], AssembleProcesses: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [visible, setVisible] = useState(false); 
+  const [selectedSerialNumber, setSelectedSerialNumber] = useState(null); 
 
   useEffect(() => {
     const fetchData = async () => {
@@ -34,6 +38,11 @@ const Observation = () => {
     fetchData();
   }, []);
 
+  const handleSerialNumberClick = (serialNumber) => {
+    setSelectedSerialNumber(serialNumber);
+    setVisible(true); 
+  };
+
   const formatProcessStatus = (process) => {
     return process && process.completed ? `Completed ${process.completed_time}` : 'Pending';
   };
@@ -41,10 +50,13 @@ const Observation = () => {
   const generateColumns = (processes) => {
     const columns = [
       {
-        title: 'Serial Number',
+        title: 'Part Number',
         dataIndex: 'serialNumber',
         key: 'serialNumber',
         fixed: 'left',
+        render: (text) => (
+          <a onClick={() => handleSerialNumberClick(text)}>{text}</a>
+        ), 
       },
     ];
 
@@ -54,11 +66,11 @@ const Observation = () => {
         dataIndex: `process${process.id}`,
         key: `process${process.id}`,
         render: (text) => {
-          const [status, timestamp] = text.split(" ");
-          const istTime = timestamp ? moment(timestamp).utcOffset("+05:30").format("YYYY-MM-DD HH:mm") : null;
+          const [status, timestamp] = text.split(' ');
+          const istTime = timestamp ? moment(timestamp).utcOffset('+05:30').format('YYYY-MM-DD HH:mm') : null;
           return (
             <>
-              {status.includes("Completed") ? <Tag color="green">{status}</Tag> : <Tag color="red">{status}</Tag>}
+              {status.includes('Completed') ? <Tag color="green">{status}</Tag> : <Tag color="red">{status}</Tag>}
               {istTime && <Tag color="blue">{istTime}</Tag>}
             </>
           );
@@ -98,33 +110,47 @@ const Observation = () => {
   return (
     <div>
       <h2>Stages Information</h2>
+      <Collapse accordion>
+        <Panel header={<span style={{ fontWeight: 'bold' }}>LOWER</span>} key="1">
+          <Table
+            columns={generateColumns(processData.LowerProcesses)}
+            dataSource={stagesData.Lower.map((stage) => generateData(stage, processData.LowerProcesses))}
+            pagination={false}
+            bordered
+            scroll={{ x: 'max-content' }}
+          />
+        </Panel>
+        <Panel header={<span style={{ fontWeight: 'bold' }}>UPPER</span>} key="2">
+          <Table
+            columns={generateColumns(processData.UpperProcesses)}
+            dataSource={stagesData.Upper.map((stage) => generateData(stage, processData.UpperProcesses))}
+            pagination={false}
+            bordered
+            scroll={{ x: 'max-content' }}
+          />
+        </Panel>
+        <Panel header={<span style={{ fontWeight: 'bold' }}>ASSEMBLE</span>} key="3">
+          <Table
+            columns={generateColumns(processData.AssembleProcesses)}
+            dataSource={stagesData.Assemble.map((stage) => generateData(stage, processData.AssembleProcesses))}
+            pagination={false}
+            bordered
+            scroll={{ x: 'max-content' }}
+          />
+        </Panel>
+      </Collapse>
 
-      <h3>LOWER</h3>
-      <Table
-        columns={generateColumns(processData.LowerProcesses)}
-        dataSource={stagesData.Lower.map((stage) => generateData(stage, processData.LowerProcesses))}
-        pagination={false}
-        bordered
-        scroll={{ x: 'max-content' }}
-      />
-
-      <h3>UPPER</h3>
-      <Table
-        columns={generateColumns(processData.UpperProcesses)}
-        dataSource={stagesData.Upper.map((stage) => generateData(stage, processData.UpperProcesses))}
-        pagination={false}
-        bordered
-        scroll={{ x: 'max-content' }}
-      />
-
-      <h3>ASSEMBLE</h3>
-      <Table
-        columns={generateColumns(processData.AssembleProcesses)}
-        dataSource={stagesData.Assemble.map((stage) => generateData(stage, processData.AssembleProcesses))}
-        pagination={false}
-        bordered
-        scroll={{ x: 'max-content' }}
-      />
+      
+      <Modal
+        title={`QR Code for Part Number: ${selectedSerialNumber}`}
+        visible={visible}
+        onCancel={() => setVisible(false)}
+        footer={null}
+      >
+        <div style={{ textAlign: 'center' }}>
+          <QRCodeCanvas value={JSON.stringify({ serial_number: selectedSerialNumber })} />
+        </div>
+      </Modal>
     </div>
   );
 };

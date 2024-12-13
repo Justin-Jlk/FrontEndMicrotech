@@ -50,11 +50,11 @@ const StagesComponent = () => {
   const generateColumns = (processes) => {
     const columns = [
       {
-        title: 'Serial Number',
+        title: 'Part Number',
         dataIndex: 'serialNumber',
         key: 'serialNumber',
         fixed: 'left',
-        width: 150, // Specify width for Serial Number column
+        width: 150, 
       },
       {
         title: 'Last Completed Process Name',
@@ -118,7 +118,7 @@ const StagesComponent = () => {
 
   return (
     <div>
-      <h2>Stages Information</h2>
+      <h2>Ageing</h2>
 
       <h3>LOWER</h3>
       <Table

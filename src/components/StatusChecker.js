@@ -1,151 +1,158 @@
-import React, { useState, useEffect } from "react";
-import { Table, Typography, Tag, message, Spin } from "antd";
-
-const { Title } = Typography;
+import React, { useEffect, useState } from 'react';
+import { Table, Tag, Space, Spin } from 'antd';
 
 const StatusChecker = () => {
-  const [statusData, setStatusData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [expandedRowKeys, setExpandedRowKeys] = useState([]);
-
+  const [masterData, setMasterData] = useState(null);
+  const [processData, setProcessData] = useState(null);
+  const [loading, setLoading] = useState(true); 
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const masterResponse = await fetch("https://microtechbackend-zdib.onrender.com/master/");
-        const response = await fetch("https://microtechbackend-zdib.onrender.com/get_stage_status/");
+    setLoading(true); 
+
+
+    fetch('https://microtechbackend-zdib.onrender.com/master/')
+      .then(response => response.json())
+      .then(data => {
+        setMasterData(data);
         
+      })
+      .catch(error => {
+        console.error('Error fetching master data:', error);
+        setLoading(false); 
+      });
 
-        if (!response.ok || !masterResponse.ok) {
-          throw new Error("Failed to fetch data from the server");
-        }
 
-        const data = await response.json();
-        const masterData = await masterResponse.json();
-
-        if (!data || typeof data !== "object" || !masterData || typeof masterData !== "object") {
-          throw new Error("Invalid data structure received");
-        }
-
-        const stages = ["Lower", "Upper", "Assemble"];
-        const processedData = stages.map((stage) => {
-          const stageData = data[stage];
-          const masterProcesses = masterData[`${stage}Processes`] || [];
-
-          const processes = Object.entries(stageData.process_status).map(
-            ([processId, status]) => {
-              const masterProcess = masterProcesses.find(
-                (proc) => proc.id.toString() === processId
-              );
-              return {
-                key: `${stage}_${processId}`,
-                process: masterProcess ? masterProcess.process : `Process ${processId}`,
-                totalParts: stageData.total_parts, // Inherited from stage
-                usedParts: stageData.used_parts,
-                completed: status.completed,
-                pending: status.pending,
-              };
-            }
-          );
-
-          
-          const [firstProcess, ...remainingProcesses] = processes;
-
-          return {
-            key: stage,
-            stage,
-            process: firstProcess.process,
-            totalParts: stageData.total_parts,
-            usedParts: stageData.used_parts,
-            completed: firstProcess.completed,
-            pending: firstProcess.pending,
-            children: remainingProcesses,
-          };
-        });
-
-        setStatusData(processedData);
-        setExpandedRowKeys([processedData]); 
-      } catch (error) {
-        message.error(`Failed to fetch data: ${error.message}`);
-      } finally {
+    fetch('https://microtechbackend-zdib.onrender.com/get_stage_status/')
+      .then(response => response.json())
+      .then(data => {
+        setProcessData(data);
+        setLoading(false); 
+      })
+      .catch(error => {
+        console.error('Error fetching process data:', error);
         setLoading(false);
-      }
-    };
-
-    fetchData();
+      });
   }, []);
 
-  const columns = [
-    {
-      title: "Stage",
-      dataIndex: "stage",
-      key: "stage",
-      align: "left",
-      render: (stage, record) => (record.children ? stage : ""),
-    },
-    {
-      title: "Process",
-      dataIndex: "process",
-      key: "process",
-      align: "center",
-    },
-    {
-      title: "Total Parts",
-      dataIndex: "totalParts",
-      key: "totalParts",
-      align: "center",
-      render: (totalParts) => (totalParts),
-    },
-    {
-      title: "Used Parts",
-      dataIndex: "usedParts",
-      key: "usedParts",
-      align: "center",
-      render: (usedParts) => (usedParts),
-    },
-    {
-      title: "Completed",
-      dataIndex: "completed",
-      key: "completed",
-      align: "center",
-      render: (completed) => <Tag color="green">{completed}</Tag>,
-    },
-    {
-      title: "Pending",
-      dataIndex: "pending",
-      key: "pending",
-      align: "center",
-      render: (pending) => <Tag color="volcano">{pending}</Tag>,
-    },
-  ];
+  if (loading) {
+    return (<div style={{ textAlign: 'center', marginTop: '50px' }}>
+      <Spin size="large" tip="Loading..." />
+    </div>); 
+  }
+
+ 
+  const renderStatus = (completed, pending) => {
+    return (
+      <Space>
+        {completed > 0 && (
+          <Tag color="green">
+            Completed: {completed}
+          </Tag>
+        )}
+        {pending > 0 && (
+          <Tag color="red">
+            Pending: {pending}
+          </Tag>
+        )}
+        {pending === 0 && completed === 0 && (
+          <span>No Pending</span>
+        )}
+      </Space>
+    );
+  };
+
+
+  const renderTable = (stage, processes) => {
+    if (!processData || !processData[stage]) {
+      return null;
+    }
+
+    const stageData = processData[stage];
+
+    const columns = [
+      {
+        title: 'Stage',
+        dataIndex: 'process',
+        key: 'process',
+        fixed: 'left', 
+        render: (text) => <strong>{text}</strong>,
+        width: 250,
+      },
+      
+      ...processes.map((process) => ({
+        title: process.process,
+        dataIndex: process.process,
+        key: process.id,
+        render: (value, record) => (
+          <Space size="middle">
+            {renderStatus(
+              record[process.id]?.completed || 0,
+              record[process.id]?.pending || 0
+            )}
+          </Space>
+        ),
+        width: 200, 
+      })),
+      // {
+      //   title: 'Total Parts',
+      //   dataIndex: 'totalParts',
+      //   key: 'totalParts',
+      //   fixed: 'left',
+      //   render: () => stageData.used_parts, 
+      //   width: 150,
+      // },
+
+    ];
+
+    const completedData = [
+      {
+        key: '1',
+        process: 'Completed',
+        ...processes.reduce((acc, process) => {
+          acc[process.id] = {
+            completed: stageData.process_status[process.id]?.completed || 0,
+            pending: 0,  
+          };
+          return acc;
+        }, {}),
+        totalParts: stageData.used_parts, 
+      },
+    ];
+
+    const pendingData = [
+      {
+        key: '2',
+        process: 'Pending',
+        ...processes.reduce((acc, process) => {
+          acc[process.id] = {
+            completed: 0, 
+            pending: stageData.process_status[process.id]?.pending || 0,
+          };
+          return acc;
+        }, {}),
+        totalParts: stageData.used_parts,
+      },
+    ];
+
+    return (
+      <div style={{ marginBottom: '20px' }}>
+        <h2>{stage} Body</h2>
+        <h4> Total Parts : {stageData.used_parts}</h4>
+        <Table
+          columns={columns}
+          dataSource={[...completedData, ...pendingData]}
+          pagination={false}
+          scroll={{ x: 'max-content' }} 
+        />
+      </div>
+    );
+  };
 
   return (
-    <div style={{ padding: "20px" }}>
-      
-      {loading ? (
-        
-        <div style={{ textAlign: "center", marginTop: "50px" }}>
-          <Spin size="large" />
-        </div>
-      ) : (<>
-        <Title level={3}>Status Checker</Title>
-        <Table
-          dataSource={statusData}
-          columns={columns}
-          bordered
-          pagination={false}
-          rowKey="key"
-          style={{ marginTop: "20px" }}
-          expandable={{
-            expandedRowKeys: expandedRowKeys,
-            onExpand: (expanded, record) => {
-              setExpandedRowKeys(expanded ? [record.key] : []);
-            },
-          }}
-
-        />
-        </>
-      )}
+    <div>
+      {masterData && masterData.LowerProcesses && renderTable('Lower', masterData.LowerProcesses)}
+      {masterData && masterData.UpperProcesses && renderTable('Upper', masterData.UpperProcesses)}
+      {masterData && masterData.AssembleProcesses && renderTable('Assemble', masterData.AssembleProcesses)}
     </div>
   );
 };

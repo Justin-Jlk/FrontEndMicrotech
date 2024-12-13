@@ -76,9 +76,9 @@ function App() {
               <img src={image} alt="MicroTech Logo" style={{ width: "50px", height: "50px",paddingLeft:"5%" }} />
               <div className="logo" style={{ color: "white", padding: "16px", fontSize: "24px", marginLeft: "16px" }}>
                 MicroTech<br/>
-                <Text strong style={{ color: "white" }}>{userName?.name || "Narendra"}</Text>
+                {/* <Text strong style={{ color: "white" }}>{userName?.name || "Narendra"}</Text>
                 <br/>
-                <Text style={{ color: "white" }}>{userRole?.role || "Admin"}</Text>
+                <Text style={{ color: "white" }}>{userRole?.role || "Admin"}</Text> */}
               </div>
              
             </div>
