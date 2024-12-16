@@ -13,3 +13,4 @@ function Logout({ setIsAuthenticated }) {
 }
 
 export default Logout;
+
